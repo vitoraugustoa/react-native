@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native'; 
-import { format, isPast } from 'date-fns';
+import { Alert, Platform, TouchableOpacity } from 'react-native';
+import { format, isBefore } from 'date-fns';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import Header from '../../components/Header/header';
 import HistoryList from '../../components/HistoryList/historyList';
+import DatePicker from '../../components/DatePicker/datePicker';
 
 import { formatarValor } from '../../helpers/regexHelpers';
 import { AuthContext } from '../../contexts/auth';
@@ -18,6 +20,7 @@ import {
   Saldo,
   Title,
   List,
+  Area,
 } from './styles';
 
 const Home: React.FC = () => {
@@ -25,10 +28,16 @@ const Home: React.FC = () => {
   const uid: any = userContext && userContext.id;
   const [saldo, setSaldo] = useState<number>(0);
   const [historico, setHistorico] = useState<History[]>([]);
+  const [newDate, setNewDDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
 
   useEffect(() => {
     carregarDados();
   }, [])
+
+  useEffect(() => {
+    carregarHistorico();
+  }, [newDate]);
 
   function carregarDados(): void {
     firebase.database().ref('users')
@@ -37,10 +46,14 @@ const Home: React.FC = () => {
         setSaldo(snapshot.val().saldo);
       });
 
+    carregarHistorico();
+  }
+
+  function carregarHistorico(): void {
     firebase.database().ref('historico')
       .child(uid)
       .orderByChild('date')
-      .equalTo(format(new Date, 'dd/MM/yy'))
+      .equalTo(format(newDate, 'dd/MM/yyyy'))
       .limitToLast(10).on('value', (snapshot => {
         setHistorico([]);
         snapshot.forEach((childItem) => {
@@ -57,7 +70,15 @@ const Home: React.FC = () => {
   }
 
   function handleDeleteItem(history: History) {
-    if(isPast(new Date(history.date))) {
+    // Pegando data do item
+    const [diaItem, mesItem, anoItem] = history.date.split('/');
+    const dateItem = new Date(`${anoItem}/${mesItem}/${diaItem}`);
+    // Pegando data hoje
+    const formatDiaHoje = format(new Date(), 'dd/MM/yyyy');
+    const [diaHoje, mesHoje, anoHoje] = formatDiaHoje.split('/');
+    const dateHoje = new Date(`${anoHoje}/${mesHoje}/${diaHoje}`);
+
+    if (isBefore(dateItem, dateHoje)) {
       Alert.alert("Você não pode excluir um regitro antigo!");
       return
     }
@@ -85,15 +106,24 @@ const Home: React.FC = () => {
       .remove()
       .then(() => {
         let saldoAtual = saldo;
-        history.tipo === 'despesa' ? 
-        saldoAtual += parseFloat(history.valor) 
-        : saldoAtual -= parseFloat(history.valor);
+        history.tipo === 'despesa' ?
+          saldoAtual += parseFloat(history.valor)
+          : saldoAtual -= parseFloat(history.valor);
 
         firebase.database().ref('users')
-        .child(uid)
-        .child('saldo')
-        .set(saldoAtual);
+          .child(uid)
+          .child('saldo')
+          .set(saldoAtual);
       });
+  }
+
+  function handleShowPicker() {
+    setShowDatePicker(true);
+  }
+
+  function onChangeDatePicker(data: Date) {
+    setShowDatePicker(Platform.OS === "ios");
+    setNewDDate(data);
   }
 
   return (
@@ -105,7 +135,12 @@ const Home: React.FC = () => {
         <Saldo>R$ {formatarValor(saldo)}</Saldo>
       </Container>
 
-      <Title>Ultimas movimentações</Title>
+      <Area>
+        <TouchableOpacity onPress={handleShowPicker}>
+          <Icon name="event" color="#FFF" size={30} />
+        </TouchableOpacity>
+        <Title>Ultimas movimentações</Title>
+      </Area>
 
 
       <List
@@ -118,6 +153,14 @@ const Home: React.FC = () => {
             onDeleteItem={handleDeleteItem} />
         )}
       />
+
+      {showDatePicker && (
+        <DatePicker
+          onChange={onChangeDatePicker}
+          onClose={() => { setShowDatePicker(false) }}
+        />
+      )}
+
     </Background>
   );
 }

@@ -37,3 +37,9 @@ export const List = styled.FlatList.attrs({
   border-top-right-radius: 15px;
   margin: 0px 8px;
 `;
+
+export const Area = styled.View`
+  flex-direction: row;
+  margin-left: 15px;
+  align-items: baseline;
+`;

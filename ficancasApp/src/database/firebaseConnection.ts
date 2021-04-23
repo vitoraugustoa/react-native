@@ -3,7 +3,7 @@ import 'firebase/auth';
 import 'firebase/database';
 
 const firebaseConfig = {
-  // configurações do firebase
+  // Config real time database firebase
 };
 
 // Initialize Firebase
