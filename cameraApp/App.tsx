@@ -1,4 +1,4 @@
-import React, {useEffect ,useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { RNCamera, TakePictureOptions } from 'react-native-camera';
 import CameraRoll from '@react-native-community/cameraroll';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 // import { Container } from './styles';
 
@@ -27,7 +28,7 @@ const App: React.FC = () => {
     }
     const data = await camera.takePictureAsync(options);
 
-    if(data.uri) {
+    if (data.uri) {
       setCapturedPhoto(data.uri);
       setOpen(true);
       savePicture(data.uri);
@@ -37,9 +38,8 @@ const App: React.FC = () => {
   async function hasAndroidPermission() {
     const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
     const hasPermission = await PermissionsAndroid.check(permission);
-    console.log(hasPermission);
 
-    if(hasPermission) {
+    if (hasPermission) {
       return true;
     }
 
@@ -48,22 +48,37 @@ const App: React.FC = () => {
   }
 
   async function savePicture(imageBase64: string) {
-    if(Platform.OS === 'android' && !(await hasAndroidPermission())) {
+    if (Platform.OS === 'android' && !(await hasAndroidPermission())) {
       return;
     }
 
     CameraRoll.save(imageBase64)
-    .then((resp) => {
-      console.log("Foto salva com sucesso.")
-    })
-    .catch((error) => {
-      console.log("Erro ao salvar a foto", error);
-    });
+      .then((resp) => {
+        console.log("Foto salva com sucesso.")
+      })
+      .catch((error) => {
+        console.log("Erro ao salvar a foto", error);
+      });
   }
 
-  function toggleCam() {
+  function toggleCam(): void {
     setType(type === RNCamera.Constants.Type.back ?
-      RNCamera.Constants.Type.front :  RNCamera.Constants.Type.back);
+      RNCamera.Constants.Type.front : RNCamera.Constants.Type.back);
+  }
+
+  function openAlbum(): void {
+    launchImageLibrary({ mediaType: "photo", includeBase64: true }, 
+    (response) => {
+      if (response.didCancel) {
+        console.log("Image Picker cancelado...");
+      }
+      else if (response.errorMessage) {
+        console.log("Gerou o erro: " + response.errorMessage);
+      } else {
+        setCapturedPhoto(response.uri as string);
+        setOpen(true);
+      }
+    });
   }
 
   return (
@@ -91,8 +106,9 @@ const App: React.FC = () => {
                   Tirar foto
                   </Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                onPress={() => { }}
+                onPress={openAlbum}
                 style={styles.btnCamera}>
                 <Text>
                   Album
@@ -118,10 +134,10 @@ const App: React.FC = () => {
               Fechar
             </Text>
 
-            <Image 
+            <Image
               resizeMode="contain"
               style={styles.photoImage}
-              source={{uri: capturedPhoto}}
+              source={{ uri: capturedPhoto }}
             />
           </TouchableOpacity>
         </View>
